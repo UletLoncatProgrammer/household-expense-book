@@ -285,11 +285,11 @@ a{color:var(--accent)}
 .card-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 .card-head h2{font-size:18px;font-weight:700}
 .card-head .hint{font-size:13px;color:var(--muted)}
-.fgrid{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"item item" "amount date" "method method" "note note" "actions actions"}
+.fgrid{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"when when" "item item" "amount date" "count count" "method method" "note note" "actions actions"}
 @media (min-width:700px){
-  .fgrid{grid-template-columns:2fr 1.3fr 1.1fr;grid-template-areas:"item amount date" "method note note" "actions actions actions"}
+  .fgrid{grid-template-columns:2fr 1.3fr 1.1fr;grid-template-areas:"when when when" "item amount date" "count count count" "method note note" "actions actions actions"}
 }
-.f-item{grid-area:item}.f-amount{grid-area:amount}.f-date{grid-area:date}.f-method{grid-area:method}.f-note{grid-area:note}.f-actions{grid-area:actions}
+.f-when{grid-area:when}.f-count{grid-area:count}.f-item{grid-area:item}.f-amount{grid-area:amount}.f-date{grid-area:date}.f-method{grid-area:method}.f-note{grid-area:note}.f-actions{grid-area:actions}
 .field{display:grid;gap:5px;min-width:0}
 .field label,.field .lbl{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .field input,.field select{height:44px;width:100%;min-width:0;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px}
@@ -300,7 +300,7 @@ a{color:var(--accent)}
 .code-input{font-family:var(--f-num);letter-spacing:.2em;text-transform:uppercase}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);cursor:pointer;font-size:14px}
-.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);font-weight:600}
+.chip[aria-checked="true"],.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);font-weight:600}
 .f-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .f-actions .btn.primary{min-width:150px;height:44px}
 .ferr{color:var(--danger);font-size:14px;margin:0}
@@ -338,6 +338,15 @@ a{color:var(--accent)}
 .row.confirming{grid-template-columns:1fr;background:var(--danger-soft);color:var(--danger);padding:12px;border-radius:10px;border:0;margin-top:6px}
 .row.confirming p{margin:0 0 8px;font-weight:500}
 .row.editing{background:var(--accent-soft);border-radius:10px;padding-inline:10px}
+.later-all{margin:10px 0 0;font-size:13px;color:var(--warn);font-weight:600}
+.later .row{border-bottom:1px solid var(--line)}
+.later .row:last-child{border-bottom:0}
+.due{font-weight:600;color:var(--ink)}
+.row.overdue .due{color:var(--danger)}
+.row.overdue{box-shadow:inset 3px 0 0 var(--danger);padding-left:10px}
+.pill.wait{background:var(--warn-soft);color:var(--warn)}
+.pill.auto{background:var(--accent-soft);color:var(--ink)}
+.link.pay{color:var(--accent)}
 .empty{padding:28px 8px;text-align:center;color:var(--muted)}
 .empty strong{display:block;color:var(--ink);font-family:var(--f-display);font-size:18px;margin-bottom:4px}
 
@@ -466,6 +475,7 @@ a{color:var(--accent)}
         <div id="sumHead"></div>
         <div class="stats" id="stats"></div>
         <div class="breakdown" id="breakdown"></div>
+        <p class="later-all" id="laterAll" hidden></p>
       </section>
 
       <section class="card" aria-labelledby="formTitle">
@@ -475,6 +485,13 @@ a{color:var(--accent)}
         </div>
         <form id="expForm" novalidate>
           <div class="fgrid">
+            <div class="field f-when">
+              <span class="lbl" id="fWhenLabel">Payment</span>
+              <div class="chips" id="fWhen" role="radiogroup" aria-labelledby="fWhenLabel">
+                <button type="button" class="chip" role="radio" data-when="now" aria-checked="true">Paid already</button>
+                <button type="button" class="chip" role="radio" data-when="later" aria-checked="false">Pay later (postpone)</button>
+              </div>
+            </div>
             <div class="field f-item">
               <label for="fItem">What was it</label>
               <input id="fItem" maxlength="80" autocomplete="off" placeholder="e.g. Electricity token, rice 5 kg">
@@ -484,8 +501,15 @@ a{color:var(--accent)}
               <div class="money"><span aria-hidden="true">Rp</span><input id="fAmount" inputmode="numeric" autocomplete="off" placeholder="0"></div>
             </div>
             <div class="field f-date">
-              <label for="fDate">Date</label>
+              <label for="fDate" id="fDateLabel">Date</label>
               <input id="fDate" type="date">
+            </div>
+            <div class="field f-count" id="fCountField" hidden>
+              <span class="lbl" id="fCountLabel">Count it in the totals</span>
+              <div class="chips" id="fCount" role="radiogroup" aria-labelledby="fCountLabel">
+                <button type="button" class="chip" role="radio" data-count="auto" aria-checked="true">Automatically on the due date</button>
+                <button type="button" class="chip" role="radio" data-count="manual" aria-checked="false">Only when someone marks it paid</button>
+              </div>
             </div>
             <div class="field f-method">
               <span class="lbl" id="fMethodLabel">Paid with</span>
@@ -502,6 +526,11 @@ a{color:var(--accent)}
             </div>
           </div>
         </form>
+      </section>
+
+      <section class="card later" id="laterSection" aria-labelledby="laterTitle" hidden>
+        <div class="card-head"><h2 id="laterTitle">Postponed payments</h2><span class="hint" id="laterHint"></span></div>
+        <div id="laterList"></div>
       </section>
 
       <section aria-labelledby="listTitle">
@@ -587,6 +616,9 @@ a{color:var(--accent)}
   let activeTab = (lsGet("hx-pref") || {}).tab || "living";
   let month = todayStr().slice(0, 7);
   let method = METHODS[0];
+  let pending = [];         // postponed payments, all months
+  let whenMode = "now";     // now | later
+  let countMode = "auto";   // auto | manual
   let editingId = null;
   let confirmId = null;
   let tabMode = null;       // null | rename | delete
@@ -885,16 +917,23 @@ a{color:var(--accent)}
     const t = ++monthToken;
     const start = month + "-01", end = shiftMonth(month, 1) + "-01";
     const {data, error} = await sb.from("expenses")
-      .select("id,tab_id,spent_on,item,amount,method,note,added_by,added_by_email,created_at")
+      .select("id,tab_id,spent_on,item,amount,method,note,added_by,added_by_email,created_at,status,auto_confirm,confirmed_at")
       .gte("spent_on", start).lt("spent_on", end)
       .order("spent_on", {ascending:false}).order("created_at", {ascending:false}).limit(2000);
     if (error) throw error;
     if (t !== monthToken) return;
     expenses = (data || []).map(r => ({...r, amount: Number(r.amount) || 0}));
   }
+  async function loadPending(){
+    const {data, error} = await sb.from("expenses")
+      .select("id,tab_id,spent_on,item,amount,method,note,added_by,added_by_email,created_at,status,auto_confirm,confirmed_at")
+      .eq("status", "pending").order("spent_on", {ascending:true}).limit(1000);
+    if (error) throw error;
+    pending = (data || []).map(r => ({...r, amount: Number(r.amount) || 0}));
+  }
   async function refresh(){
     try {
-      await Promise.all([loadTabs(), loadMonth()]);
+      await Promise.all([loadTabs(), loadMonth(), loadPending()]);
       loaded = true;
       if (!$("#banner").hidden && $("#banner").dataset.kind === "warn") banner();
     } catch (e){
@@ -920,9 +959,12 @@ a{color:var(--accent)}
   // ---------- Helpers ----------
   function ensureActive(){ if (tabs.length && !tabs.some(t => t.id === activeTab)) activeTab = tabs[0].id; }
   const activeObj = () => tabs.find(t => t.id === activeTab) || tabs[0] || null;
+  // A postponed payment counts once it is marked paid, or on its due date when set to count automatically.
+  const counts = e => e.status !== "pending" || (e.auto_confirm && e.spent_on <= todayStr());
+  const waiting = () => pending.filter(e => !counts(e));
   function monthTotals(){
     const t = {};
-    for (const e of expenses) t[e.tab_id] = (t[e.tab_id] || 0) + e.amount;
+    for (const e of expenses) if (counts(e)) t[e.tab_id] = (t[e.tab_id] || 0) + e.amount;
     return t;
   }
   function nextColor(){
@@ -933,7 +975,7 @@ a{color:var(--accent)}
   const canWrite = () => !!me && loaded && !busy;
 
   // ---------- Render ----------
-  function render(){ renderTabs(); renderSummary(); renderForm(); renderList(); }
+  function render(){ renderTabs(); renderSummary(); renderForm(); renderLater(); renderList(); }
 
   function renderTabs(){
     const tot = monthTotals();
@@ -980,7 +1022,7 @@ a{color:var(--accent)}
     const tot = monthTotals();
     const all = Object.values(tot).reduce((a, b) => a + b, 0);
     const mine = tot[t.id] || 0;
-    const n = expenses.filter(e => e.tab_id === t.id).length;
+    const n = expenses.filter(e => e.tab_id === t.id && counts(e)).length;
     const share = all ? Math.round(mine / all * 100) : 0;
     const ml = monthLabel(month);
     $("#stats").innerHTML =
@@ -1007,6 +1049,57 @@ a{color:var(--accent)}
     $("#fSubmit").disabled = !canWrite() || !t;
     $("#fCancel").hidden = !editingId;
     $("#fMethod").innerHTML = METHODS.map(m => '<button type="button" class="chip" data-method="'+esc(m)+'" aria-pressed="'+(m === method)+'">'+esc(m)+'</button>').join("");
+    syncWhenUI();
+  }
+  function syncWhenUI(){
+    const later = whenMode === "later";
+    for (const c of document.querySelectorAll("#fWhen .chip")) c.setAttribute("aria-checked", String(c.dataset.when === whenMode));
+    for (const c of document.querySelectorAll("#fCount .chip")) c.setAttribute("aria-checked", String(c.dataset.count === countMode));
+    $("#fCountField").hidden = !later;
+    $("#fDateLabel").textContent = later ? "Due date" : "Date";
+    $("#fMethodLabel").textContent = later ? "Will pay with" : "Paid with";
+    if (!editingId) $("#fSubmit").textContent = later ? "Postpone payment" : "Add expense";
+  }
+
+  function dueText(e){
+    const today = todayStr();
+    if (e.spent_on < today) return "Overdue since " + dayLabel(e.spent_on);
+    if (e.spent_on === today) return "Due today";
+    return "Due " + dayLabel(e.spent_on);
+  }
+  function laterRowHtml(e){
+    if (confirmId === e.id){
+      return '<div class="row confirming" data-id="'+esc(e.id)+'"><div><p>Delete the postponed payment "'+esc(e.item)+'" ('+esc(fmt(e.amount))+')?</p>'
+        + '<div class="btns"><button class="btn danger" type="button" data-act="del-yes">Delete</button><button class="btn" type="button" data-act="del-no">Keep</button></div></div></div>';
+    }
+    const who = whoLabel(e);
+    const overdue = !e.auto_confirm && e.spent_on < todayStr();
+    return '<div class="row'+(overdue ? " overdue" : "")+(editingId === e.id ? " editing" : "")+'" data-id="'+esc(e.id)+'">'
+      + '<div><div class="row-item">'+esc(e.item)+'</div><div class="row-meta">'
+      + '<span class="due">'+esc(dueText(e))+'</span>'
+      + (e.auto_confirm ? '<span class="pill auto">Counts on due date</span>' : '<span class="pill wait">Counts when marked paid</span>')
+      + (e.method ? '<span class="pill">'+esc(e.method)+'</span>' : '')
+      + (e.note ? '<span class="note">'+esc(e.note)+'</span>' : '')
+      + (who ? '<span class="by">· added by '+esc(who)+'</span>' : '')
+      + '</div></div><div class="row-side"><div class="row-amt">'+fmt(e.amount)+'</div>'
+      + '<div class="row-acts"><button class="link pay" type="button" data-act="pay"'+(canWrite() ? "" : " disabled")+'>Mark paid</button><button class="link" type="button" data-act="edit">Edit</button><button class="link del" type="button" data-act="del">Delete</button></div></div></div>';
+  }
+  function renderLater(){
+    const t = activeObj();
+    const all = waiting();
+    const allEl = $("#laterAll");
+    if (all.length && loaded){
+      const sum = all.reduce((a, b) => a + b.amount, 0);
+      const over = all.filter(e => !e.auto_confirm && e.spent_on < todayStr()).length;
+      allEl.textContent = all.length + " postponed " + (all.length === 1 ? "payment" : "payments") + " across all tabs · " + fmt(sum) + " not counted yet" + (over ? " · " + over + " overdue" : "");
+      allEl.hidden = false;
+    } else allEl.hidden = true;
+    const sec = $("#laterSection");
+    const mine = t ? all.filter(e => e.tab_id === t.id) : [];
+    if (!mine.length){ sec.hidden = true; $("#laterList").innerHTML = ""; return; }
+    sec.hidden = false;
+    $("#laterHint").textContent = mine.length + (mine.length === 1 ? " item · " : " items · ") + fmt(mine.reduce((a, b) => a + b.amount, 0)) + " not counted yet";
+    $("#laterList").innerHTML = mine.map(laterRowHtml).join("");
   }
 
   function renderList(){
@@ -1014,7 +1107,7 @@ a{color:var(--accent)}
     const list = $("#list");
     if (!loaded){ list.innerHTML = '<div class="empty"><strong>Loading the family book…</strong>Entries from everyone appear here.</div>'; $("#listCount").textContent = ""; return; }
     if (!t){ list.innerHTML = ""; $("#listCount").textContent = ""; return; }
-    const rows = expenses.filter(e => e.tab_id === t.id);
+    const rows = expenses.filter(e => e.tab_id === t.id && counts(e));
     $("#listCount").textContent = rows.length ? rows.length + (rows.length === 1 ? " entry" : " entries") : "";
     if (!rows.length){
       list.innerHTML = '<div class="empty"><strong>No entries in '+esc(monthLabel(month))+'</strong>Add the first '+esc(t.name)+' item with the form above.</div>';
@@ -1040,6 +1133,7 @@ a{color:var(--accent)}
     const who = whoLabel(e);
     return '<div class="row'+(editingId === e.id ? " editing" : "")+'" data-id="'+esc(e.id)+'">'
       + '<div><div class="row-item">'+esc(e.item)+'</div><div class="row-meta">'
+      + (e.status === "pending" ? '<span class="pill auto">Counted on due date</span>' : '')
       + (e.method ? '<span class="pill">'+esc(e.method)+'</span>' : '')
       + (e.note ? '<span class="note">'+esc(e.note)+'</span>' : '')
       + (who ? '<span class="by">· added by '+esc(who)+'</span>' : '')
@@ -1051,6 +1145,7 @@ a{color:var(--accent)}
   function clearForm(keepDate){
     $("#fItem").value = ""; $("#fAmount").value = ""; $("#fNote").value = "";
     if (!keepDate) $("#fDate").value = todayStr();
+    whenMode = "now"; countMode = "auto"; syncWhenUI();
     showErr("#fErr");
   }
   function stopEdit(){ editingId = null; clearForm(false); }
@@ -1064,6 +1159,20 @@ a{color:var(--accent)}
     for (const c of document.querySelectorAll("#fMethod .chip")) c.setAttribute("aria-pressed", String(c.dataset.method === method));
   });
   $("#fCancel").addEventListener("click", () => { stopEdit(); render(); });
+  $("#fWhen").addEventListener("click", ev => {
+    const b = ev.target.closest("[data-when]"); if (!b) return;
+    whenMode = b.dataset.when;
+    if (whenMode === "later" && $("#fDate").value <= todayStr() && !editingId){
+      const d = new Date(); d.setDate(d.getDate() + 7);
+      $("#fDate").value = d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+    }
+    if (whenMode === "now" && !editingId) $("#fDate").value = todayStr();
+    syncWhenUI();
+  });
+  $("#fCount").addEventListener("click", ev => {
+    const b = ev.target.closest("[data-count]"); if (!b) return;
+    countMode = b.dataset.count; syncWhenUI();
+  });
 
   $("#expForm").addEventListener("submit", async ev => {
     ev.preventDefault();
@@ -1076,12 +1185,17 @@ a{color:var(--accent)}
     const missing = [];
     if (!item) missing.push("what it was");
     if (!(amount > 0)) missing.push("an amount above Rp 0");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(spent_on)) missing.push("a date");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(spent_on)) missing.push(whenMode === "later" ? "a due date" : "a date");
     if (missing.length){ showErr("#fErr", "Add " + missing.join(", ") + "."); return; }
     busy = true; renderForm(); showErr("#fErr");
-    const body = {spent_on, item, amount, method, note: note || null};
-    let res;
     const wasEdit = !!editingId;
+    const old = wasEdit ? (expenses.find(x => x.id === editingId) || pending.find(x => x.id === editingId)) : null;
+    const later = whenMode === "later";
+    const body = {spent_on, item, amount, method, note: note || null,
+      status: later ? "pending" : "paid",
+      auto_confirm: later ? countMode === "auto" : true,
+      confirmed_at: later ? null : (old && old.status === "pending" ? new Date().toISOString() : (old ? old.confirmed_at || null : null))};
+    let res;
     if (wasEdit) res = await sb.from("expenses").update(body).eq("id", editingId).select();
     else res = await sb.from("expenses").insert({...body, tab_id: t.id}).select();
     busy = false;
@@ -1089,9 +1203,9 @@ a{color:var(--accent)}
     if (wasEdit && (!res.data || !res.data.length)){ editingId = null; showErr("#fErr", "That entry no longer exists. Someone may have deleted it."); await refresh(); return; }
     editingId = null;
     clearForm(true);
-    if (monthOf(spent_on) !== month){ month = monthOf(spent_on); $("#monthPick").value = month; }
+    if (!later && monthOf(spent_on) !== month){ month = monthOf(spent_on); $("#monthPick").value = month; }
     await refresh();
-    toast(wasEdit ? "Changes saved" : "Added " + fmt(amount) + " to " + t.name);
+    toast(wasEdit ? "Changes saved" : later ? "Postponed " + fmt(amount) + " · due " + dayLabel(spent_on) : "Added " + fmt(amount) + " to " + t.name);
     if (!wasEdit) $("#fItem").focus();
   });
 
@@ -1157,12 +1271,24 @@ a{color:var(--accent)}
   });
 
   // ---------- Entries ----------
-  $("#list").addEventListener("click", async ev => {
+  async function onEntryClick(ev){
     const b = ev.target.closest("[data-act]"); if (!b) return;
     const row = b.closest("[data-id]"); if (!row) return;
     const id = row.dataset.id, act = b.dataset.act;
+    const find = () => expenses.find(x => x.id === id) || pending.find(x => x.id === id);
+    if (act === "pay"){
+      const e = find(); if (!e || !canWrite()) return;
+      const today = todayStr();
+      const {data, error} = await sb.from("expenses").update({status:"paid", spent_on: today, confirmed_at: new Date().toISOString()}).eq("id", id).select();
+      if (error || !data || !data.length){ banner("error", "Not marked as paid. " + (error ? friendly(error) : "Someone may have deleted it.")); await refresh(); return; }
+      if (monthOf(today) !== month){ month = monthOf(today); $("#monthPick").value = month; }
+      await refresh(); toast("Marked paid · " + fmt(e.amount) + " counted today");
+      return;
+    }
     if (act === "edit"){
-      const e = expenses.find(x => x.id === id); if (!e) return;
+      const e = find(); if (!e) return;
+      whenMode = e.status === "pending" ? "later" : "now";
+      countMode = e.auto_confirm === false ? "manual" : "auto";
       editingId = id; confirmId = null;
       $("#fItem").value = e.item || "";
       $("#fAmount").value = e.amount ? Number(e.amount).toLocaleString("id-ID") : "";
@@ -1173,16 +1299,18 @@ a{color:var(--accent)}
       render();
       $("#expForm").closest(".card").scrollIntoView({block:"start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"});
       $("#fItem").focus({preventScroll:true});
-    } else if (act === "del"){ confirmId = id; renderList(); }
-    else if (act === "del-no"){ confirmId = null; renderList(); }
+    } else if (act === "del"){ confirmId = id; renderList(); renderLater(); }
+    else if (act === "del-no"){ confirmId = null; renderList(); renderLater(); }
     else if (act === "del-yes"){
       confirmId = null;
       if (editingId === id) stopEdit();
       const {error} = await sb.from("expenses").delete().eq("id", id);
-      if (error){ banner("error", "Not deleted: " + friendly(error)); renderList(); return; }
+      if (error){ banner("error", "Not deleted: " + friendly(error)); render(); return; }
       await refresh(); toast("Entry deleted");
     }
-  });
+  }
+  $("#list").addEventListener("click", onEntryClick);
+  $("#laterList").addEventListener("click", onEntryClick);
 
   // ---------- Family (owner) ----------
   $("#familyBtn").addEventListener("click", async () => {
