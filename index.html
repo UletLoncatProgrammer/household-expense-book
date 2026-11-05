@@ -146,6 +146,8 @@
 :root[data-pic] .main > section:not(.card),
 :root[data-pic] .tabs{background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:var(--radius);padding:12px 16px}
 :root[data-pic] .layout{margin-top:14px}
+/* The header holds the Background menu: no blur here (blur traps the menu under later panels), and keep it above the sticky tabs */
+:root[data-pic] .top{-webkit-backdrop-filter:none;backdrop-filter:none;position:relative;z-index:20}
 *{box-sizing:border-box}
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 html,body{min-height:100%}
